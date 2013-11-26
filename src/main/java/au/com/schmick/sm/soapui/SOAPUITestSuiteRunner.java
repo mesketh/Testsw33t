@@ -6,9 +6,19 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.lang.ProcessBuilder.Redirect;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
+
+import javax.xml.transform.Source;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.URIResolver;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
 
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
@@ -17,6 +27,11 @@ import org.apache.commons.configuration.ConfigurationUtils;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
+
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.annotations.XStreamAlias;
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
+import com.thoughtworks.xstream.converters.basic.AbstractSingleValueConverter;
 
 /**
  * Copyright - Mark Hesketh ☻ 2013.
@@ -62,13 +77,18 @@ public class SOAPUITestSuiteRunner {
 
 	Logger logger = Logger.getLogger(SOAPUITestSuiteDescriptor.class);
 
+	Configuration toolCfg = null;
+
+	@XStreamAlias("result-file")
 	class SOAPUITestSuiteDescriptor {
 
+		@XStreamOmitField
 		private String suiteName;
+
+		@XStreamOmitField
 		private Configuration cfg;
 
 		public SOAPUITestSuiteDescriptor(String suiteName, Configuration cfg) {
-			super();
 			this.suiteName = suiteName;
 			this.cfg = cfg;
 		}
@@ -123,6 +143,44 @@ public class SOAPUITestSuiteRunner {
 
 	}
 
+	@XStreamAlias("results-aggregator")
+	public static class SOAPUITestSuiteDescriptorAggregator {
+
+		private Collection<SOAPUITestSuiteDescriptor> suiteDescriptors;
+
+		public SOAPUITestSuiteDescriptorAggregator(
+				Collection<SOAPUITestSuiteDescriptor> suiteDescriptors) {
+			this.suiteDescriptors = suiteDescriptors;
+		}
+	}
+
+	/**
+	 * Custom converter for the {@link SOAPUITestSuiteDescriptorConverter} for
+	 * use in aggregation of test suites results.
+	 * 
+	 * @author Mark
+	 * 
+	 */
+	static class SOAPUITestSuiteDescriptorConverter extends
+			AbstractSingleValueConverter {
+
+		@Override
+		public boolean canConvert(Class type) {
+			return SOAPUITestSuiteDescriptor.class.equals(type);
+		}
+
+		@Override
+		public String toString(Object source) {
+			return String.format("TEST-%s.xml",
+					((SOAPUITestSuiteDescriptor) source).getSuiteName());
+		}
+
+		@Override
+		public Object fromString(String arg0) {
+			throw new UnsupportedOperationException("Not implemented");
+		}
+	}
+
 	// runs each test suite after resolving all properties for it
 	private Map<String, SOAPUITestSuiteDescriptor> assembleTestSuites(
 			String soapSuitesFile) throws ConfigurationException {
@@ -130,8 +188,11 @@ public class SOAPUITestSuiteRunner {
 		PropertiesConfiguration defaultCfg = new PropertiesConfiguration(
 				soapSuitesFile);
 
+		// extract the core tool configuration for reuse later
+		this.toolCfg = defaultCfg.subset("soapui");
+
 		StringTokenizer st = new StringTokenizer(
-				defaultCfg.getString("soapui-test-suites"), ",");
+				this.toolCfg.getString("test-suites"), ",");
 
 		Map<String, SOAPUITestSuiteDescriptor> suiteDescriptors = new HashMap<String, SOAPUITestSuiteDescriptor>();
 
@@ -164,21 +225,100 @@ public class SOAPUITestSuiteRunner {
 		return combinedCfg;
 	}
 
-	private void runSuites(String runnerPropsFile)
-			throws ConfigurationException {
+	private void run() throws ConfigurationException,
+			TransformerConfigurationException, IOException {
 
-		Map<String, SOAPUITestSuiteDescriptor> suiteDescriptors = assembleTestSuites(runnerPropsFile);
+		File testSuiteResultsFile = toAggregateResults(runSuites(RUNNER_CFG_PROP));
 
-		for (SOAPUITestSuiteDescriptor nextDesc : suiteDescriptors.values()) {
-
-			try {
-				runAsBatchCommand(nextDesc);
-			} catch (IOException ioe) {
-				System.err.println(ioe);
-			}
-		}
+		transformResultsForDisplay(testSuiteResultsFile);
 	}
 
+	private void transformResultsForDisplay(File testSuiteResultsFile) {
+		// TODO
+	}
+
+	// dump all results to a single file ready for transformation
+	private File toAggregateResults(
+			Map<String, SOAPUITestSuiteDescriptor> suiteDescriptors)
+			throws IOException, TransformerConfigurationException {
+
+		XStream _xstream = new XStream();
+		_xstream.autodetectAnnotations(true);
+		_xstream.addImplicitCollection(
+				SOAPUITestSuiteDescriptorAggregator.class, "suiteDescriptors");
+		_xstream.registerConverter(new SOAPUITestSuiteDescriptorConverter());
+
+		File filesListFile = new File(this.toolCfg.getString("report.dir")
+				+ File.separator + "all-testsuites.xml");
+		FileWriter fw = new FileWriter(filesListFile);
+		_xstream.toXML(
+				new SOAPUITestSuiteDescriptorAggregator(suiteDescriptors
+						.values()), fw);
+		fw.flush();
+		fw.close();
+
+		File aggregateResultsFile = generateResults(filesListFile);
+
+		// filesListFile.delete();
+
+		return aggregateResultsFile;
+
+	}
+
+	private File generateResults(File filesListFile) {
+
+		// aggregate the suite results so they can be transformed to html
+		TransformerFactory _factory = TransformerFactory.newInstance();
+		File aggregateResultsFile = null;
+		try {
+			StreamSource transformSource = new StreamSource(this.getClass().getResourceAsStream("/xslt/testsuite-report-aggregator.xsl"));
+			Transformer resultsTransformer = _factory
+					.newTransformer(transformSource);
+
+			aggregateResultsFile = new File(
+					this.toolCfg.getString("report.dir") + File.separator
+							+ "all-testsuite-results.xml");
+			
+			resultsTransformer.setURIResolver(new URIResolver() {
+
+				@Override
+				public Source resolve(String href, String base)
+						throws TransformerException {
+					String inputResultsFileUri = SOAPUITestSuiteRunner.this.toolCfg.getString("report.dir")+File.separator+href;
+					return new StreamSource(inputResultsFileUri);
+				}
+
+			});
+			resultsTransformer.transform(new StreamSource(filesListFile),
+					new StreamResult(aggregateResultsFile));
+		} catch (TransformerException e) {
+			throw new RuntimeException("Configuration issue or file issue", e);
+
+		}
+		return aggregateResultsFile;
+	}
+
+	private Map<String, SOAPUITestSuiteDescriptor> runSuites(
+			String runnerPropsFile) {
+
+		Map<String, SOAPUITestSuiteDescriptor> suiteDescriptors;
+		try {
+			// build meta data about testsuites
+			suiteDescriptors = assembleTestSuites(runnerPropsFile);
+
+			// execute all tests in each testsuite...
+			for (SOAPUITestSuiteDescriptor nextDesc : suiteDescriptors.values()) {
+				runAsBatchCommand(nextDesc);
+			}
+		} catch (ConfigurationException | IOException e) {
+			throw new RuntimeException("Configuration issue or file issue", e);
+		}
+
+		return suiteDescriptors;
+	}
+
+	// wraps the soapui command line with a dummy script with local EV scope to
+	// get around command line length limit
 	private void runAsBatchCommand(SOAPUITestSuiteDescriptor desc)
 			throws IOException {
 
@@ -206,9 +346,11 @@ public class SOAPUITestSuiteRunner {
 	public static void main(String[] args) {
 
 		try {
-			new SOAPUITestSuiteRunner().runSuites(RUNNER_CFG_PROP);
-		} catch (ConfigurationException e) {
-			System.err.print("Can't find runner.properties");
+			new SOAPUITestSuiteRunner().run();
+		} catch (ConfigurationException | TransformerConfigurationException
+				| IOException e) {
+			// TODO error to user
+			System.err.println("Failed!");
 		}
 
 	}
