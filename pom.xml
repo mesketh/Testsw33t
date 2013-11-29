@@ -66,6 +66,11 @@
 			<artifactId>xstream</artifactId>
 			<version>1.4.4</version>
 		</dependency>
+		<dependency>
+			<groupId>net.sf.saxon</groupId>
+			<artifactId>Saxon-HE</artifactId>
+			<version>9.4</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>

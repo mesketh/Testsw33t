@@ -1,6 +1,7 @@
 package au.com.schmick.sm.soapui;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -192,7 +193,7 @@ public class SOAPUITestSuiteRunner {
 		this.toolCfg = defaultCfg.subset("soapui");
 
 		StringTokenizer st = new StringTokenizer(
-				this.toolCfg.getString("test-suites"), ",");
+				this.toolCfg.getString("test-suites"), ";");
 
 		Map<String, SOAPUITestSuiteDescriptor> suiteDescriptors = new HashMap<String, SOAPUITestSuiteDescriptor>();
 
@@ -226,15 +227,22 @@ public class SOAPUITestSuiteRunner {
 	}
 
 	private void run() throws ConfigurationException,
-			TransformerConfigurationException, IOException {
+			IOException, TransformerException {
 
 		File testSuiteResultsFile = toAggregateResults(runSuites(RUNNER_CFG_PROP));
 
 		transformResultsForDisplay(testSuiteResultsFile);
 	}
 
-	private void transformResultsForDisplay(File testSuiteResultsFile) {
-		// TODO
+	private void transformResultsForDisplay(File testSuiteResultsFile) throws TransformerException {
+		
+		TransformerFactory _factory = TransformerFactory.newInstance();
+		
+		Transformer resultsTransformer = _factory.newTransformer(new StreamSource(getClass().getResourceAsStream("/xslt/generate-results.xsl")));
+		resultsTransformer.transform(new StreamSource(testSuiteResultsFile),
+				new StreamResult(new File(this.toolCfg.getString("report.dir")+File.separator+"report.html")));
+		
+		// TODO transform the results xml for all test suites to a single html file rendered with jquery.
 	}
 
 	// dump all results to a single file ready for transformation
@@ -347,7 +355,7 @@ public class SOAPUITestSuiteRunner {
 
 		try {
 			new SOAPUITestSuiteRunner().run();
-		} catch (ConfigurationException | TransformerConfigurationException
+		} catch (ConfigurationException | TransformerException 
 				| IOException e) {
 			// TODO error to user
 			System.err.println("Failed!");
