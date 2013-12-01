@@ -7,7 +7,7 @@
 		<html>
 			<head>
 				<title>
-					Results of the latest suite suite sweep as @
+					Results of the latest suite sweep as @
 					<xsl:value-of select="current-dateTime()" />
 				</title>
 				<link rel="stylesheet" href="styles/sheet.css" />
@@ -20,10 +20,13 @@
 
 				<script>
 					$(function() {
-					$( "#testsuite-result-accordion").accordion();
-					collapsible: true
+					$( "#testsuite-results-accordion" ).accordion({
+					heightStyle: "content"
 					});
+					});
+
 				</script>
+
 			</head>
 
 			<body class="container body-margins">
@@ -39,7 +42,7 @@
 					</span>
 				</p>
 
-				<h1>Service Monitoring</h1>
+				<h1>Test Suite Summary</h1>
 
 
 				<table style="width:100%;clear:both;">
@@ -75,16 +78,7 @@
 
 				<!-- (TODO include soap project name) -->
 				<h2 class="suitedescription">Service Test Suite results</h2>
-				<table class="suite">
-					<thead>
-						<tr>
-							<th class="serviceNameHeader">Service</th>
-							<th class="timeColumn">Time</th>
-							<th>Status</th>
-						</tr>
-					</thead>
-				</table>
-				<div id="testsuite-result-accordion">
+				<div id="testsuite-results-accordion">
 
 					<xsl:for-each select="testsuite">
 
@@ -96,6 +90,13 @@
 						</h3>
 						<div>
 							<table class="suite">
+								<thead>
+									<tr>
+										<th class="serviceNameHeader">Service</th>
+										<th class="timeColumn">Time</th>
+										<th>Status</th>
+									</tr>
+								</thead>
 								<xsl:for-each select="testcase">
 									<xsl:choose>
 										<xsl:when test="failure">

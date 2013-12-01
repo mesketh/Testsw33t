@@ -1,7 +1,6 @@
 package au.com.schmick.sm.soapui;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -226,23 +225,28 @@ public class SOAPUITestSuiteRunner {
 		return combinedCfg;
 	}
 
-	private void run() throws ConfigurationException,
-			IOException, TransformerException {
+	private void run() throws ConfigurationException, IOException,
+			TransformerException {
 
 		File testSuiteResultsFile = toAggregateResults(runSuites(RUNNER_CFG_PROP));
 
 		transformResultsForDisplay(testSuiteResultsFile);
 	}
 
-	private void transformResultsForDisplay(File testSuiteResultsFile) throws TransformerException {
-		
+	private void transformResultsForDisplay(File testSuiteResultsFile)
+			throws TransformerException {
+
 		TransformerFactory _factory = TransformerFactory.newInstance();
-		
-		Transformer resultsTransformer = _factory.newTransformer(new StreamSource(getClass().getResourceAsStream("/xslt/generate-results.xsl")));
+
+		Transformer resultsTransformer = _factory
+				.newTransformer(new StreamSource(getClass()
+						.getResourceAsStream("/xslt/generate-results.xsl")));
 		resultsTransformer.transform(new StreamSource(testSuiteResultsFile),
-				new StreamResult(new File(this.toolCfg.getString("report.dir")+File.separator+"report.html")));
-		
-		// TODO transform the results xml for all test suites to a single html file rendered with jquery.
+				new StreamResult(new File(this.toolCfg.getString("report.dir")
+						+ File.separator + "report.html")));
+
+		// TODO transform the results xml for all test suites to a single html
+		// file rendered with jquery.
 	}
 
 	// dump all results to a single file ready for transformation
@@ -279,20 +283,23 @@ public class SOAPUITestSuiteRunner {
 		TransformerFactory _factory = TransformerFactory.newInstance();
 		File aggregateResultsFile = null;
 		try {
-			StreamSource transformSource = new StreamSource(this.getClass().getResourceAsStream("/xslt/testsuite-report-aggregator.xsl"));
+			StreamSource transformSource = new StreamSource(this.getClass()
+					.getResourceAsStream(
+							"/xslt/testsuite-report-aggregator.xsl"));
 			Transformer resultsTransformer = _factory
 					.newTransformer(transformSource);
 
 			aggregateResultsFile = new File(
 					this.toolCfg.getString("report.dir") + File.separator
 							+ "all-testsuite-results.xml");
-			
+
 			resultsTransformer.setURIResolver(new URIResolver() {
 
 				@Override
 				public Source resolve(String href, String base)
 						throws TransformerException {
-					String inputResultsFileUri = SOAPUITestSuiteRunner.this.toolCfg.getString("report.dir")+File.separator+href;
+					String inputResultsFileUri = SOAPUITestSuiteRunner.this.toolCfg
+							.getString("report.dir") + File.separator + href;
 					return new StreamSource(inputResultsFileUri);
 				}
 
@@ -310,16 +317,22 @@ public class SOAPUITestSuiteRunner {
 			String runnerPropsFile) {
 
 		Map<String, SOAPUITestSuiteDescriptor> suiteDescriptors;
+		String cmdFile = null;
 		try {
 			// build meta data about testsuites
 			suiteDescriptors = assembleTestSuites(runnerPropsFile);
 
 			// execute all tests in each testsuite...
 			for (SOAPUITestSuiteDescriptor nextDesc : suiteDescriptors.values()) {
-				runAsBatchCommand(nextDesc);
+				cmdFile = runAsBatchCommand(nextDesc);
 			}
 		} catch (ConfigurationException | IOException e) {
 			throw new RuntimeException("Configuration issue or file issue", e);
+		} finally {
+			// remove the batch file...
+			if (cmdFile != null) {
+				new File(cmdFile).delete();
+			}
 		}
 
 		return suiteDescriptors;
@@ -327,16 +340,19 @@ public class SOAPUITestSuiteRunner {
 
 	// wraps the soapui command line with a dummy script with local EV scope to
 	// get around command line length limit
-	private void runAsBatchCommand(SOAPUITestSuiteDescriptor desc)
+	private String runAsBatchCommand(SOAPUITestSuiteDescriptor desc)
 			throws IOException {
 
 		StringBuffer buf = new StringBuffer(desc.toCommandLine()).insert(0,
 				"setlocal\n").append("\nendlocal");
-		FileWriter fw = new FileWriter("suiterunner.cmd");
+		File suiteCmdFile = File.createTempFile("suiterunner", ".cmd");
+		FileWriter fw = new FileWriter(suiteCmdFile);
 		IOUtils.copy(new StringReader(buf.toString()), fw);
 		IOUtils.closeQuietly(fw);
-		createProcessBuilder("suiterunner.cmd", desc.getSuiteOverridesFile())
+		createProcessBuilder(suiteCmdFile.getAbsolutePath(), desc.getSuiteOverridesFile())
 				.start();
+
+		return suiteCmdFile.getAbsolutePath();
 	}
 
 	private ProcessBuilder createProcessBuilder(String command,
@@ -355,8 +371,7 @@ public class SOAPUITestSuiteRunner {
 
 		try {
 			new SOAPUITestSuiteRunner().run();
-		} catch (ConfigurationException | TransformerException 
-				| IOException e) {
+		} catch (ConfigurationException | TransformerException | IOException e) {
 			// TODO error to user
 			System.err.println("Failed!");
 		}
