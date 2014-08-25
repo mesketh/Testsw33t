@@ -8,7 +8,7 @@
 	<version>1.0.0-SNAPSHOT</version>
 	<name>sm</name>
 	<properties>
-		<java.version>1.6</java.version>
+		<java.version>1.7</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<slf4j.version>1.7.5</slf4j.version>
 		<runner.main.class>au.com.schmick.sm.soapui.SOAPUITestSuiteRunner</runner.main.class>
