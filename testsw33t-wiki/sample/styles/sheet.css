@@ -1,0 +1,172 @@
+/** Generic body style. */
+body {
+	background-color: #fff;
+	font-family: tahoma, verdana, arial, sans-serif;
+	font-size: 9px;
+	margin: 0 1em 0;
+}
+
+body h1 {
+	font-size: 2em;
+}
+
+/** Generic results tables' style. */
+.suite {
+	border: 1px solid grey;
+	width: 100%;
+	font-size: 12px;
+	table-layout: fixed;
+}
+
+/** Header row. */
+.suite .header {
+	background-color: lightgrey;
+}
+
+/** The properties of the row containing a FAILED test record. */
+.suite .failedTest {
+	/*background-color: #EE2222;*/
+	background-color: #ff4040;
+	border-bottom: 1px solid lightgray;
+}
+
+/** Error 'pre' wrap. */
+table pre {
+	/**background: #ff4040;*/
+	background: #ff4040;
+	color: white;
+	margin: 0px;
+}
+
+/** The properties of the row containing a PASSED test record. */
+.suite .passedTest {
+	background-color: #33AA33;
+	border-bottom: 1px solid lightgray;
+}
+
+/** Test Suite description before every test suite. */
+.suiteDescription {
+	clear: both;
+	font-size: 1.5em;
+	margin: 0.25em 0 0;
+}
+
+/** Centers the contents of each cell. */
+.suite td {
+	text-align: center;
+	padding: 0.2em 0em 0.2em 0em;
+}
+
+.suite thead {
+	background: lightgray;
+}
+
+/** 'Service' column. */
+.suite th:nth-child(1),td:nth-child(1) {
+	padding-left: 2em;
+	text-align: center;
+}
+/** 'Time' column. */
+.suite th:nth-child(2),td:nth-child(2) {
+	text-align: center;
+}
+/** 'Status' column. */
+.suite th:nth-child(3),td:nth-child(3) {
+	text-align: center;
+	width: 50em;
+	max-width: 50em;
+}
+
+/** Service name column style. */
+.suite .serviceNameColumn {
+	font-weight: bold;
+	text-align: left;
+	padding: 0 0 0 2em;
+}
+
+/** The first cell of the header. */
+.serviceNameHeader {
+	text-align: center;
+}
+/** Service name column style. */
+.suite .timeColumn {
+	width: 5em;
+	border-right: 1px solid lightgrey;
+	border-left: 1px solid lightgrey;
+}
+
+/** SoapUI result in the produced XML files are already formatted - we don't want to show some things in there. */
+.suite td h3, hr {
+	display: none;
+	visibility: hidden;
+}
+
+/** Top summary table. */
+.summaryTable {
+	border: 1px solid gray;
+    float: left;
+    margin: 0 5em 0.75em 0;
+}
+/** First column of the summary table. */
+.summaryTable td:nth-child(1) {
+	display: block;
+	text-align: right;
+}
+/** Second column of the summary table. */
+.summaryTable td:nth-child(2) {
+	width: 2em;
+	text-align: center;
+}
+
+/** The timestamp styles. */
+.timestamp {
+	float: right;
+	color: grey;
+	font-weight: bold;
+}
+.timestamp span {
+	color: black;
+	font-size: 1.5em;
+}
+
+/** 'Detailed reports' link. */
+.detailedReports {
+	float:right;
+    font-size: 0.8em;
+    font-weight: bold;
+	clear:both;
+}
+
+/** The clickable available environments list. */
+.availableEnvironments {
+	text-transform: uppercase;
+}
+/** Currently displayed environment. */
+.availableEnvironments span {
+	color:red;
+	font-size: 1.25em;
+	font-weight: bold;
+}
+
+/** Autorefresh checkbox and label. */
+.autorefresh {
+	clear:both;
+	float:right;
+	font-size: 0.75em;
+}
+
+/** Added to the time column, to those entries which are a bit slow. */
+.suite .warning-yellow {
+	background-color: yellow;
+}
+
+/** Added to the time column, to those entries which are very slow. */
+.suite .warning-red {
+	background-color: #FF5500;
+}
+
+/** Padding the main content and the top and bottom of the page. */
+.body-margins {
+	padding-top: 10px;
+	padding-bottom: 20px;
+}
